@@ -1,0 +1,19 @@
+name: growthhub
+services:
+  postgres:
+    image: postgres:18.6
+    environment:
+      POSTGRES_DB: growthhub
+      POSTGRES_USER: growthhub
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
+    ports:
+      - "127.0.0.1:${PG_PORT:-5433}:5432"
+    volumes:
+      - growthhub_postgres:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U growthhub"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+volumes:
+  growthhub_postgres:

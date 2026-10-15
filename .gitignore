@@ -1,0 +1,16 @@
+.env
+.env.*
+!.env.example
+backend/target/
+frontend/node_modules/
+frontend/dist/
+frontend/test-results/
+frontend/playwright-report/
+.runtime/
+backups/
+*.log
+.idea/
+
+__pycache__/
+*.pyc
+*.tsbuildinfo
