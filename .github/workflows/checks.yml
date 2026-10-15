@@ -40,7 +40,21 @@ jobs:
         run: |
           printf '%s\n' DB_USER=growthhub DB_PASSWORD=ci-only-ephemeral > .env
           chmod 600 .env
-          python3 scripts/test.py
+          mkdir -p .runtime
+          if ! python3 -u scripts/test.py > .runtime/ci-regression.log 2>&1; then
+            cat .runtime/ci-regression.log
+            python3 - <<'PY'
+          from pathlib import Path
+          for name in ('ci-regression.log', 'test-backend.log'):
+              path = Path('.runtime') / name
+              if path.exists():
+                  message = path.read_text(errors='replace')[-12000:]
+                  message = message.replace('%', '%25').replace('\r', '%0D').replace('\n', '%0A')
+                  print(f'::error title={name}::{message}')
+          PY
+            exit 1
+          fi
+          cat .runtime/ci-regression.log
 
       - name: Session authentication checks
         run: python3 scripts/security_test.py
@@ -59,6 +73,7 @@ jobs:
         with:
           name: test-diagnostics
           path: |
+            .runtime/ci-regression.log
             .runtime/test-backend.log
             .runtime/security-test.log
             frontend/test-results/
