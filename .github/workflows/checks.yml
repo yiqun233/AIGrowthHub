@@ -48,7 +48,7 @@ jobs:
           for name in ('ci-regression.log', 'test-backend.log'):
               path = Path('.runtime') / name
               if path.exists():
-                  message = path.read_text(errors='replace')[-12000:]
+                  message = path.read_text(errors='replace')[-3000:]
                   message = message.replace('%', '%25').replace('\r', '%0D').replace('\n', '%0A')
                   print(f'::error title={name}::{message}')
           PY
