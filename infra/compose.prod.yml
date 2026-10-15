@@ -1,0 +1,154 @@
+name: growthhub
+services:
+  db:
+    build:
+      context: ..
+      dockerfile: infra/postgres.Dockerfile
+      args:
+        BASE_REGISTRY: ${BASE_REGISTRY:-docker.io/library}
+    environment:
+      POSTGRES_DB: growthhub
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${PG_ADMIN_PASSWORD:?Set a private administrator password}
+      APP_DB_PASSWORD: ${DB_PASSWORD:?Set a private database password}
+    volumes:
+      - postgres_data:/var/lib/postgresql
+    healthcheck:
+      test: [CMD-SHELL, "pg_isready -U postgres -d growthhub"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+    networks: [private]
+  backend:
+    build:
+      context: ..
+      dockerfile: infra/backend.Dockerfile
+      args:
+        BASE_REGISTRY: ${BASE_REGISTRY:-docker.io/library}
+    environment:
+      DB_URL: jdbc:postgresql://db:5432/growthhub
+      DB_USER: growthhub
+      DB_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD}
+      SERVER_ADDRESS: 0.0.0.0
+      AUTH_ENABLED: "true"
+      AUTH_USERNAME: ${AUTH_USERNAME:-growthhub}
+      AUTH_PASSWORD: ${AUTH_PASSWORD:?Set a password of at least 12 characters}
+      AUTH_PASSWORD_HASH: ${AUTH_PASSWORD_HASH:-}
+      SESSION_COOKIE_SECURE: "true"
+      APP_TIMEZONE: Asia/Shanghai
+      AI_TIMEOUT_SECONDS: ${AI_TIMEOUT_SECONDS:-90}
+      AI_DAILY_LIMIT: ${AI_DAILY_LIMIT:-20}
+      FEED_AUTO_REFRESH: "true"
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_MODEL: ${OPENAI_MODEL:-}
+      OPENAI_BASE_URL: ${OPENAI_BASE_URL:-https://api.openai.com/v1}
+      OPENAI_OUTPUT_MODE: ${OPENAI_OUTPUT_MODE:-JSON_SCHEMA}
+      OPENAI_TOKEN_PARAMETER: ${OPENAI_TOKEN_PARAMETER:-max_completion_tokens}
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
+      DEEPSEEK_MODEL: ${DEEPSEEK_MODEL:-}
+      DEEPSEEK_BASE_URL: ${DEEPSEEK_BASE_URL:-https://api.deepseek.com}
+      DEEPSEEK_OUTPUT_MODE: ${DEEPSEEK_OUTPUT_MODE:-JSON_OBJECT}
+      DEEPSEEK_TOKEN_PARAMETER: ${DEEPSEEK_TOKEN_PARAMETER:-max_tokens}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      ANTHROPIC_MODEL: ${ANTHROPIC_MODEL:-}
+      ANTHROPIC_BASE_URL: ${ANTHROPIC_BASE_URL:-https://api.anthropic.com/v1}
+      ANTHROPIC_OUTPUT_MODE: ${ANTHROPIC_OUTPUT_MODE:-TEXT}
+      ANTHROPIC_TOKEN_PARAMETER: ${ANTHROPIC_TOKEN_PARAMETER:-max_tokens}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_MODEL: ${GEMINI_MODEL:-}
+      GEMINI_BASE_URL: ${GEMINI_BASE_URL:-https://generativelanguage.googleapis.com/v1beta}
+      GEMINI_OUTPUT_MODE: ${GEMINI_OUTPUT_MODE:-JSON_OBJECT}
+      GEMINI_TOKEN_PARAMETER: ${GEMINI_TOKEN_PARAMETER:-max_tokens}
+      QWEN_API_KEY: ${QWEN_API_KEY:-}
+      QWEN_MODEL: ${QWEN_MODEL:-}
+      QWEN_BASE_URL: ${QWEN_BASE_URL:-https://dashscope.aliyuncs.com/compatible-mode/v1}
+      QWEN_OUTPUT_MODE: ${QWEN_OUTPUT_MODE:-JSON_OBJECT}
+      QWEN_TOKEN_PARAMETER: ${QWEN_TOKEN_PARAMETER:-max_tokens}
+      ZHIPU_API_KEY: ${ZHIPU_API_KEY:-}
+      ZHIPU_MODEL: ${ZHIPU_MODEL:-}
+      ZHIPU_BASE_URL: ${ZHIPU_BASE_URL:-https://open.bigmodel.cn/api/paas/v4}
+      ZHIPU_OUTPUT_MODE: ${ZHIPU_OUTPUT_MODE:-JSON_OBJECT}
+      ZHIPU_TOKEN_PARAMETER: ${ZHIPU_TOKEN_PARAMETER:-max_tokens}
+      MOONSHOT_API_KEY: ${MOONSHOT_API_KEY:-}
+      MOONSHOT_MODEL: ${MOONSHOT_MODEL:-}
+      MOONSHOT_BASE_URL: ${MOONSHOT_BASE_URL:-https://api.moonshot.cn/v1}
+      MOONSHOT_OUTPUT_MODE: ${MOONSHOT_OUTPUT_MODE:-JSON_OBJECT}
+      MOONSHOT_TOKEN_PARAMETER: ${MOONSHOT_TOKEN_PARAMETER:-max_tokens}
+      DOUBAO_API_KEY: ${DOUBAO_API_KEY:-}
+      DOUBAO_MODEL: ${DOUBAO_MODEL:-}
+      DOUBAO_BASE_URL: ${DOUBAO_BASE_URL:-https://ark.cn-beijing.volces.com/api/v3}
+      DOUBAO_OUTPUT_MODE: ${DOUBAO_OUTPUT_MODE:-JSON_OBJECT}
+      DOUBAO_TOKEN_PARAMETER: ${DOUBAO_TOKEN_PARAMETER:-max_completion_tokens}
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+      OPENROUTER_MODEL: ${OPENROUTER_MODEL:-}
+      OPENROUTER_BASE_URL: ${OPENROUTER_BASE_URL:-https://openrouter.ai/api/v1}
+      OPENROUTER_OUTPUT_MODE: ${OPENROUTER_OUTPUT_MODE:-JSON_OBJECT}
+      OPENROUTER_TOKEN_PARAMETER: ${OPENROUTER_TOKEN_PARAMETER:-max_tokens}
+      CUSTOM_API_KEY: ${CUSTOM_API_KEY:-}
+      CUSTOM_MODEL: ${CUSTOM_MODEL:-}
+      CUSTOM_BASE_URL: ${CUSTOM_BASE_URL:-}
+      CUSTOM_OUTPUT_MODE: ${CUSTOM_OUTPUT_MODE:-TEXT}
+      CUSTOM_TOKEN_PARAMETER: ${CUSTOM_TOKEN_PARAMETER:-max_tokens}
+    read_only: true
+    tmpfs: [/tmp]
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+    networks: [private, outbound]
+  web:
+    build:
+      context: ..
+      dockerfile: infra/frontend.Dockerfile
+      args:
+        BASE_REGISTRY: ${BASE_REGISTRY:-docker.io/library}
+    environment:
+      APP_DOMAIN: ${APP_DOMAIN:?Set your domain}
+      ACME_EMAIL: ${ACME_EMAIL:?Set your certificate contact email}
+    ports:
+      - "${BIND_ADDRESS:-127.0.0.1}:${HTTP_PORT:-80}:80"
+      - "${BIND_ADDRESS:-127.0.0.1}:${HTTPS_PORT:-443}:443"
+    volumes:
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+    networks: [private, outbound]
+  backup:
+    build:
+      context: ..
+      dockerfile: infra/postgres.Dockerfile
+      args:
+        BASE_REGISTRY: ${BASE_REGISTRY:-docker.io/library}
+    environment:
+      PGHOST: db
+      PGDATABASE: growthhub
+      PGUSER: growthhub
+      PGPASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD}
+      BACKUP_ROOT: /backups
+    entrypoint: [bash, /ops/backup-loop.sh]
+    volumes:
+      - backup_data:/backups
+    read_only: true
+    tmpfs: [/tmp, /var/lib/postgresql]
+    depends_on:
+      db:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+    networks: [private]
+volumes:
+  postgres_data:
+  caddy_data:
+  caddy_config:
+  backup_data:
+networks:
+  private:
+    internal: true
+  outbound:

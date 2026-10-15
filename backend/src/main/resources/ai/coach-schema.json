@@ -1,0 +1,96 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "summary": {
+      "type": "string"
+    },
+    "learnedTopics": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "evidence": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "logId": {
+            "type": "string"
+          },
+          "quote": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "logId",
+          "quote"
+        ]
+      }
+    },
+    "openQuestions": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "masteryAssessment": {
+      "type": "string"
+    },
+    "tomorrowTasks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "estimatedMinutes": {
+            "type": "integer"
+          },
+          "acceptanceCriteria": {
+            "type": "string"
+          },
+          "goalId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "existingTaskId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "title",
+          "reason",
+          "estimatedMinutes",
+          "acceptanceCriteria",
+          "goalId",
+          "existingTaskId"
+        ]
+      }
+    },
+    "planAdjustmentReason": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "summary",
+    "learnedTopics",
+    "evidence",
+    "openQuestions",
+    "masteryAssessment",
+    "tomorrowTasks",
+    "planAdjustmentReason"
+  ]
+}

@@ -8,6 +8,7 @@ public class StudyLog extends BaseEntity {
     public LocalDate studyDate;
     @Column(columnDefinition="text") public String content;
     public int durationMinutes;
+    public String activityType="LEARNING";
     @Column(columnDefinition="text") public String achievements="";
     @Column(columnDefinition="text") public String blockers="";
     @ElementCollection @CollectionTable(name="study_log_task",joinColumns=@JoinColumn(name="study_log_id"))

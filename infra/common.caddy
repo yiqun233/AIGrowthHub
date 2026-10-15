@@ -1,0 +1,22 @@
+(growthhub) {
+ encode zstd gzip
+ header {
+  X-Content-Type-Options nosniff
+  X-Frame-Options DENY
+  Referrer-Policy no-referrer
+  Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; object-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'"
+ }
+ @api path /api/* /actuator/health
+ handle @api {
+  reverse_proxy backend:8080
+ }
+ handle {
+  root * /srv
+  try_files {path} /index.html
+  @assets path /assets/*
+  header @assets Cache-Control "public, max-age=31536000, immutable"
+  @html path / /index.html
+  header @html Cache-Control "no-cache"
+  file_server
+ }
+}

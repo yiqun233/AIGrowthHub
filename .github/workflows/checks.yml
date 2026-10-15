@@ -34,15 +34,31 @@ jobs:
       - name: Build frontend
         working-directory: frontend
         run: npm ci && npm run build && npx playwright install --with-deps chromium
+      - name: Local configuration parsing
+        run: python3 scripts/local_env_test.py
       - name: Isolated API and browser checks
         run: |
           printf '%s\n' DB_USER=growthhub DB_PASSWORD=ci-only-ephemeral > .env
           chmod 600 .env
           python3 scripts/test.py
+
+      - name: Session authentication checks
+        run: python3 scripts/security_test.py
+      - name: Validate production Compose
+        run: docker compose --env-file infra/.env.production.example -f infra/compose.prod.yml config --quiet
+      - name: Build deployment images
+        run: |
+          docker build -f infra/backend.Dockerfile -t growthhub-backend:ci .
+          docker build -f infra/frontend.Dockerfile -t growthhub-web:ci .
+      - name: Full local HTTPS deployment check
+        run: python3 scripts/deployment_check.py
+      - name: Backup retention policy
+        run: mkdir -p backups && python3 scripts/backup_policy_test.py
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
           name: test-diagnostics
           path: |
             .runtime/test-backend.log
+            .runtime/security-test.log
             frontend/test-results/

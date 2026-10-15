@@ -7,9 +7,8 @@ ROOT=Path(__file__).resolve().parents[1]
 RUNTIME=ROOT/'.runtime'; RUNTIME.mkdir(exist_ok=True)
 def config():
  env=os.environ.copy()
- for line in (ROOT/'.env').read_text().splitlines():
-  if line and not line.startswith('#'):
-   key,value=line.split('=',1);env[key]=value
+ from local_env import load_env
+ env=load_env(ROOT/'.env',env)
  env['JAVA_HOME']='/usr/lib/jvm/java-21-openjdk-amd64'
  env['PATH']=env['JAVA_HOME']+'/bin:'+str(Path.home()/'.volta/bin')+':/usr/bin:'+env['PATH']
  return env

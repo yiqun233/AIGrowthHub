@@ -1,0 +1,27 @@
+import { useRef } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Alert, App, Button, Checkbox, Form, Input, Popconfirm, Select, Space, Tag } from 'antd';
+import { api } from './api';
+import type { AiSettings } from './api';
+interface Result {summary:string;limitations:string;nextSteps:string[];evidence:{sourceId:string;quote:string}[]}
+interface Work {id:string;status:string;provider:string;model:string;attemptCount:number;inputTokens:number|null;outputTokens:number|null;durationMs:number|null;errorMessage:string|null;result:Result|null;snapshot:unknown}
+export function WorkPanel({kind,targetId,version,readOnly=false,dirty=false,onApplied}:{kind:'WEEKLY_REVIEW'|'FEED_SUMMARY';targetId:string;version:number;readOnly?:boolean;dirty?:boolean;onApplied?:(content:string)=>void}){
+ const client=useQueryClient();const {message}=App.useApp();const [form]=Form.useForm();const retry=useRef<{body:string;key:string}|null>(null);
+ const settings=useQuery({queryKey:['settings'],queryFn:()=>api<AiSettings>('/settings')});
+ const works=useQuery({queryKey:['works',kind,targetId],queryFn:()=>api<Work[]>('/ai/works?kind='+kind+'&targetId='+targetId),refetchInterval:q=>q.state.data?.some(w=>['PENDING','RUNNING'].includes(w.status))?1000:false});
+ const generate=useMutation({mutationFn:(values:Record<string,unknown>)=>{const body={version,provider:values.provider,model:values.model,consent:values.consent};const text=JSON.stringify(body);if(retry.current?.body!==text)retry.current={body:text,key:crypto.randomUUID()};return api(kind==='WEEKLY_REVIEW'?'/reviews/weekly/'+targetId+'/generate':'/feed/items/'+targetId+'/summarize','POST',body,{'Idempotency-Key':retry.current!.key});},onSuccess:()=>{retry.current=null;form.setFieldValue('consent',false);void client.invalidateQueries({queryKey:['works',kind,targetId]});},onError:(e:Error)=>void message.error(e.message)});
+ const apply=useMutation({mutationFn:(id:string)=>api<{finalContent:string}>('/reviews/weekly/'+targetId+'/apply-ai','POST',{version,workId:id}),onSuccess:r=>{onApplied?.(r.finalContent);void client.invalidateQueries();void message.success('已采用为可编辑草稿，仍需核对并确认');},onError:(e:Error)=>void message.error(e.message)});
+ const provider=Form.useWatch('provider',form)??settings.data?.provider;const configured=settings.data?.providers.find(p=>p.id===provider)?.configured;
+ const latest=works.data?.[0];
+ return <div className="work-panel"><h3>{kind==='WEEKLY_REVIEW'?'AI 周复盘草稿':'按需 AI 摘要'}</h3><p className="muted">只在你提交时发送来源；模型输出是建议，不能替代原文和实际验证。</p>
+ {settings.error||works.error?<Alert type="error" title="AI 状态读取失败" action={<Button onClick={()=>void client.invalidateQueries()}>重试</Button>}/>:null}
+ {settings.data&&!readOnly?<Form form={form} key={settings.data.version} layout="vertical" initialValues={{provider:settings.data.provider,model:settings.data.model,consent:false}} onValuesChange={v=>{if(v.provider)form.setFieldValue('model',settings.data!.providers.find(p=>p.id===v.provider)?.defaultModel??'');}} onFinish={v=>generate.mutate(v)}>
+ <div className="form-grid"><Form.Item name="provider" label="分析提供商" rules={[{required:true}]}><Select virtual={false} options={settings.data.providers.map(p=>({value:p.id,label:p.label+(p.configured?'':'（未配置）')}))}/></Form.Item><Form.Item name="model" label="分析模型 ID" rules={[{required:true},{pattern:/^[A-Za-z0-9][A-Za-z0-9._:/-]{0,99}$/}]}><Input maxLength={100}/></Form.Item></div>
+ <Form.Item name="consent" valuePropName="checked" rules={[{validator:(_,v)=>v?Promise.resolve():Promise.reject(new Error('请先同意发送本次来源'))}]}><Checkbox>{kind==='WEEKLY_REVIEW'?'同意发送本周日志、周计划及关联任务生成草稿':'同意发送此条资讯内容生成摘要'}</Checkbox></Form.Item>
+ <Button htmlType="submit" disabled={!configured||dirty||latest?.status==='PENDING'||latest?.status==='RUNNING'} loading={generate.isPending}>{kind==='WEEKLY_REVIEW'?'生成 AI 周复盘':'生成资讯摘要'}</Button>{!configured?<p className="muted">先在服务端配置所选提供商；其他功能仍可使用。</p>:null}</Form>:null}
+ {latest?<div className="work-result"><Space wrap><Tag>{({PENDING:'等待分析',RUNNING:'分析中',FAILED:'分析失败',SUCCEEDED:'分析完成'} as Record<string,string>)[latest.status]}</Tag><span className="muted">{latest.provider} · {latest.model} · {latest.attemptCount} 次请求{latest.durationMs!==null?' · '+(latest.durationMs/1000).toFixed(1)+' 秒':''} · 输入 {latest.inputTokens??'未知'} / 输出 {latest.outputTokens??'未知'} tokens</span></Space>
+ {latest.errorMessage?<Alert type="error" title={latest.errorMessage}/>:null}{latest.result?<><p className="weekly-text">{latest.result.summary}</p>{latest.result.evidence.map((e,i)=><blockquote key={i}><p>{e.quote}</p><small>来源 ID：{e.sourceId}</small></blockquote>)}<ul>{latest.result.nextSteps.map((s,i)=><li key={i}>{s}</li>)}</ul><p className="muted">局限：{latest.result.limitations}</p>{kind==='WEEKLY_REVIEW'&&!readOnly?<Popconfirm title="采用 AI 内容替换已保存的复盘文字？" description="只替换草稿，不会确认复盘或生成任务。" onConfirm={()=>apply.mutateAsync(latest.id)}><Button disabled={dirty} loading={apply.isPending}>采用为复盘草稿</Button></Popconfirm>:null}</>:null}
+ <details className="snapshot"><summary>查看 AI 提交时的来源快照</summary><pre className="json-snapshot">{JSON.stringify(latest.snapshot,null,2)}</pre></details>
+ {(works.data?.length??0)>1?<details className="snapshot"><summary>查看历史 AI 结果（{works.data!.length} 条）</summary>{works.data!.slice(1).map(w=><article key={w.id}><Tag>{w.status}</Tag><span>{w.provider} · {w.model}</span><p className="weekly-text">{w.result?.summary??w.errorMessage??'等待处理'}</p></article>)}</details>:null}
+ </div>:null}</div>;
+}

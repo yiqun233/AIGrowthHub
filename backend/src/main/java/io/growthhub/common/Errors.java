@@ -27,7 +27,10 @@ public class Errors {
     @ExceptionHandler(OptimisticLockingFailureException.class) ResponseEntity<ErrorBody> conflict(Exception e) {
         return error(409,"VERSION_CONFLICT","记录已更新，请刷新后重试",Map.of());
     }
+    @ExceptionHandler(ConcurrencyFailureException.class) ResponseEntity<ErrorBody> concurrent(Exception e) {
+        return error(409,"CONCURRENT_UPDATE","来源正在更新，请刷新后重试",Map.of());
+    }
     @ExceptionHandler(DataIntegrityViolationException.class) ResponseEntity<ErrorBody> integrity(Exception e) {
-        return error(409,"DATA_CONFLICT","数据关联或字段约束冲突",Map.of());
+        return error(409,"DATA_CONFLICT","数据关联或字段约束冲突；如任务已归属周计划，请先解除归属或调整到对应周",Map.of());
     }
 }

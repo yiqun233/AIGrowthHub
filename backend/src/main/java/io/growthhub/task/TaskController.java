@@ -17,8 +17,8 @@ public class TaskController {
         UUID goalId,Boolean clearGoal,LocalDate scheduledDate,@Min(1) @Max(1440) Integer estimateMinutes,
         @Min(1) @Max(3) Integer priority,Task.Status status,@Size(max=5000) String acceptanceCriteria){}
     public record View(UUID id,UUID goalId,String title,String detail,LocalDate scheduledDate,int estimateMinutes,
-        int priority,Task.Status status,String acceptanceCriteria,Instant completedAt,Long version){
-        public static View of(Task t){return new View(t.id,t.goalId,t.title,t.detail,t.scheduledDate,t.estimateMinutes,t.priority,t.status,t.acceptanceCriteria,t.completedAt,t.version);}
+        int priority,Task.Status status,String acceptanceCriteria,Instant completedAt,Long version,UUID weeklyPlanId){
+        public static View of(Task t){return new View(t.id,t.goalId,t.title,t.detail,t.scheduledDate,t.estimateMinutes,t.priority,t.status,t.acceptanceCriteria,t.completedAt,t.version,t.weeklyPlanId);}
     }
     public record Result(List<View> items,long total,int page,int size){}
     @GetMapping public Result list(@RequestParam(required=false) LocalDate date,@RequestParam(required=false) Task.Status status,

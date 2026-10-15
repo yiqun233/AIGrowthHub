@@ -1,0 +1,2 @@
+import { defineConfig,devices } from '@playwright/test';
+export default defineConfig({testDir:'./e2e-auth',workers:1,use:{baseURL:process.env.HTTPS_BASE_URL||'http://127.0.0.1:15174',ignoreHTTPSErrors:!!process.env.HTTPS_BASE_URL,trace:'retain-on-failure'},projects:[{name:'chromium',use:{...devices['Desktop Chrome']}}],webServer:process.env.HTTPS_BASE_URL?undefined:{command:'npm run preview -- --port 15174',url:'http://127.0.0.1:15174',reuseExistingServer:false,env:{BACKEND_URL:'http://127.0.0.1:18081'}},reporter:'list'});

@@ -15,16 +15,17 @@ public class StudyLogController {
     public StudyLogController(StudyLogRepository logs,TaskRepository tasks){this.logs=logs;this.tasks=tasks;}
     public record Input(@NotNull LocalDate studyDate,@NotBlank @Size(max=50000) String content,
         @NotNull @Min(0) @Max(1440) Integer durationMinutes,@Size(max=20000) String achievements,
-        @Size(max=20000) String blockers,@Size(max=100) Set<UUID> taskIds){}
+        @Size(max=20000) String blockers,@Size(max=100) Set<UUID> taskIds,@Pattern(regexp="LEARNING|DEVELOPMENT|REST") String activityType){}
     public record Update(@NotNull Long version,@NotNull @Valid Input data){}
-    public record View(UUID id,LocalDate studyDate,String content,int durationMinutes,String achievements,String blockers,Set<UUID> taskIds,Long version){
-        public static View of(StudyLog l){return new View(l.id,l.studyDate,l.content,l.durationMinutes,l.achievements,l.blockers,Set.copyOf(l.taskIds),l.version);}
+    public record View(UUID id,LocalDate studyDate,String content,int durationMinutes,String achievements,String blockers,Set<UUID> taskIds,Long version,String activityType){
+        public static View of(StudyLog l){return new View(l.id,l.studyDate,l.content,l.durationMinutes,l.achievements,l.blockers,Set.copyOf(l.taskIds),l.version,l.activityType);}
     }
     public record Result(List<View> items,long total,int page,int size){}
     private void fill(StudyLog l,Input i){
         var ids=i.taskIds()==null?Set.<UUID>of():i.taskIds();
         if(ids.stream().anyMatch(Objects::isNull) || tasks.countByIdIn(ids)!=ids.size())throw new ApiException(400,"INVALID_TASK","关联任务不存在");
         l.studyDate=i.studyDate();l.content=i.content();l.durationMinutes=i.durationMinutes();
+        if(i.activityType()!=null)l.activityType=i.activityType();if(l.activityType.equals("REST")&&l.durationMinutes!=0)throw new ApiException(400,"REST_MINUTES","休息记录的实际分钟应为 0");
         l.achievements=Objects.requireNonNullElse(i.achievements(),"");l.blockers=Objects.requireNonNullElse(i.blockers(),"");
         l.taskIds.clear();l.taskIds.addAll(ids);
     }

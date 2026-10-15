@@ -1,0 +1,9 @@
+{
+ admin off
+ skip_install_trust
+}
+import /etc/caddy/common.caddy
+https://localhost {
+ tls internal
+ import growthhub
+}

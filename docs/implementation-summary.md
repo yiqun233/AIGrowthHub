@@ -1,3 +1,5 @@
+> 这是 M0/M1 完成时的历史快照；当前 M2 状态和配置请查看 docs/progress.md 与 docs/ai-contract.md。
+
 # GrowthHub 实施进度
 
 更新日期：2026-10-15。

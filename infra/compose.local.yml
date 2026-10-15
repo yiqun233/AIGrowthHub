@@ -1,0 +1,3 @@
+services:
+  web:
+    command: [caddy, run, --config, /etc/caddy/Caddyfile.local, --adapter, caddyfile]

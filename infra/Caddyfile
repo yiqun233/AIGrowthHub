@@ -1,0 +1,9 @@
+{
+ email {$ACME_EMAIL}
+ admin off
+}
+import /etc/caddy/common.caddy
+{$APP_DOMAIN} {
+ header Strict-Transport-Security "max-age=31536000"
+ import growthhub
+}

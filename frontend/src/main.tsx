@@ -1,7 +1,7 @@
-import { StrictMode, useState } from 'react';
+import { StrictMode, Suspense, lazy, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { createRoot } from 'react-dom/client';
-import { BrowserRouter, Navigate, NavLink, Route, Routes, useLocation } from 'react-router-dom';
+import { BrowserRouter, Navigate, NavLink, Route, Routes, useLocation, useSearchParams } from 'react-router-dom';
 import { QueryClient, QueryClientProvider, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Alert, App as AntApp, Button, Checkbox, ConfigProvider, DatePicker, Empty, Form, Input, InputNumber, Modal, Popconfirm, Select, Skeleton, Space, Tag } from 'antd';
 import zhCN from 'antd/locale/zh_CN';
@@ -12,6 +12,13 @@ import { api, today } from './api';
 import type { Dashboard, Goal, Page, StudyLog, Task, TaskStatus } from './api';
 import 'antd/dist/reset.css';
 import './style.css';
+const AiSettings=lazy(()=>import('./coach').then(m=>({default:m.AiSettings})));
+const Coach=lazy(()=>import('./coach').then(m=>({default:m.Coach})));
+const Weekly=lazy(()=>import('./weekly').then(m=>({default:m.Weekly})));
+import { AuthGate } from './auth';
+const Achievements=lazy(()=>import('./achievements').then(m=>({default:m.Achievements})));
+const Feeds=lazy(()=>import('./feeds').then(m=>({default:m.Feeds})));
+import { Assignment } from './assignment';
 const client=new QueryClient({defaultOptions:{queries:{retry:1,refetchOnWindowFocus:false}}});
 const labels:Record<TaskStatus,string>={TODO:'待开始',IN_PROGRESS:'进行中',DONE:'已完成',CANCELLED:'已取消'};
 const statusOptions=Object.entries(labels).map(([value,label])=>({value,label}));
@@ -44,19 +51,21 @@ function TaskList({tasks,onEdit}:{tasks:Task[];onEdit:(t:Task)=>void}){
  if(!tasks.length)return <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="还没有任务，先安排一件能完成的小事"/>;
  return <div className="task-list">{tasks.map(task=><div className={'task-row '+(task.status==='DONE'?'is-done':'')} key={task.id}>
  <Checkbox aria-label={'完成任务：'+task.title} checked={task.status==='DONE'} disabled={update.isPending||task.status==='CANCELLED'} onChange={e=>update.mutate({task,status:e.target.checked?'DONE':'TODO'})}/>
- <div className="task-body"><strong>{task.title}</strong><div className="task-meta"><span>{task.scheduledDate}</span><span>{task.estimateMinutes} 分钟</span>{task.priority===1?<Tag color="gold">优先</Tag>:null}</div>{task.acceptanceCriteria?<p>{task.acceptanceCriteria}</p>:null}</div>
+ <div className="task-body"><strong>{task.title}</strong><div className="task-meta"><span>{task.scheduledDate}</span><span>{task.estimateMinutes} 分钟</span>{task.priority===1?<Tag color="gold">优先</Tag>:null}</div>{task.acceptanceCriteria?<p>{task.acceptanceCriteria}</p>:null}<Assignment task={task}/></div>
  <Select aria-label={'任务状态：'+task.title} size="small" className="status-select" value={task.status} options={statusOptions} disabled={update.isPending} onChange={status=>update.mutate({task,status})}/>
  <Button type="text" aria-label={'编辑任务：'+task.title} icon={<EditOutlined aria-hidden="true"/>} onClick={()=>onEdit(task)}/>
  </div>)}</div>;
 }
 function Today(){
  const q=useQuery({queryKey:['dashboard'],queryFn:()=>api<Dashboard>('/dashboard')});
+ const analyses=useQuery({queryKey:['analyses','today'],queryFn:()=>api<{items:{id:string;status:string;suggestionStatus:string|null;targetDate:string;model:string}[]}>('/ai/analyses?size=5')});
  const [edit,setEdit]=useState<Task|null|undefined>();
  return <><Header title="今天，向前一步。" description="用一件具体的小事，把学习变成自己的能力。" action={<Button type="primary" icon={<PlusOutlined aria-hidden="true"/>} onClick={()=>setEdit(null)}>新建任务</Button>}/>
  <State loading={q.isPending} error={q.error}>{q.data?<>
- <div className="metrics"><div><span>今日完成</span><strong>{q.data.completedCount}<small> / {q.data.plannedCount}</small></strong></div><div><span>本周学习</span><strong>{q.data.weekDurationMinutes}<small> 分钟</small></strong></div><div><span>待重新安排</span><strong>{q.data.overdueCount}<small> 项</small></strong></div><div className="date-metric"><span>{q.data.timezone}</span><strong>{dayjs(q.data.date).format('MM.DD')}<small> {['周日','周一','周二','周三','周四','周五','周六'][dayjs(q.data.date).day()]}</small></strong></div></div>
+ <div className="metrics"><div><span>今日完成</span><strong>{q.data.completedCount}<small> / {q.data.plannedCount}</small></strong></div><div><span>本周实践总时长</span><strong>{q.data.weekDurationMinutes}<small> 分钟</small></strong></div><div><span>待重新安排</span><strong>{q.data.overdueCount}<small> 项</small></strong></div><div className="date-metric"><span>{q.data.timezone}</span><strong>{dayjs(q.data.date).format('MM.DD')}<small> {['周日','周一','周二','周三','周四','周五','周六'][dayjs(q.data.date).day()]}</small></strong></div></div>
  <div className="today-grid"><section className="panel"><div className="section-heading"><h2>今日任务</h2><NavLink to="/plan">查看全部 <ArrowRightOutlined aria-hidden="true"/></NavLink></div><TaskList tasks={q.data.tasks} onEdit={setEdit}/></section>
- <aside className="note-panel"><span className="note-label">记录比打卡更有价值</span><h2>今天收获了什么？</h2><p>记下做过的实践、拿得出的成果，或者暂时卡住的地方。休息也是正常的安排。</p><NavLink to="/logs"><Button icon={<BookOutlined aria-hidden="true"/>}>写学习记录</Button></NavLink><div className="coach-note">AI 学习建议将在下一里程碑接入，当前数据均由你自己创建和管理。</div></aside></div>
+ <aside className="note-panel"><span className="note-label">记录比打卡更有价值</span><h2>今天收获了什么？</h2><p>记下做过的实践、拿得出的成果，或者暂时卡住的地方。休息也是正常的安排。</p><NavLink to="/logs"><Button icon={<BookOutlined aria-hidden="true"/>}>写学习记录</Button></NavLink><div className="coach-note"><NavLink to="/coach">前往 AI 教练</NavLink>，根据已保存的记录生成建议；只有你确认后才会写入任务。</div></aside></div>
+ <section className="panel recent"><div className="section-heading"><h2>最近 AI 分析与建议</h2><NavLink to="/coach">进入 AI 教练</NavLink></div>{analyses.error?<Alert type="warning" title="AI 状态暂时无法读取，手工记录仍可使用"/>:analyses.data?.items.length?analyses.data.items.map(a=><p key={a.id}><NavLink to={"/coach?analysis="+a.id}>{a.targetDate} · {a.model}</NavLink> <Tag>{a.suggestionStatus==='DRAFT'?'待确认建议':a.status==='FAILED'?'分析失败':a.status==='SUCCEEDED'?'分析完成':'分析中'}</Tag></p>):<p className="muted">还没有分析，保存日志后可主动生成。</p>}</section>
  <section className="panel recent"><div className="section-heading"><h2>最近记录</h2><NavLink to="/logs">全部记录 <ArrowRightOutlined aria-hidden="true"/></NavLink></div>{q.data.recentLogs.length?q.data.recentLogs.map(l=><article key={l.id} className="log-preview"><span>{l.studyDate} · {l.durationMinutes} 分钟</span><p>{l.content}</p>{l.achievements?<Tag icon={<CheckOutlined aria-hidden="true"/>}>{l.achievements.slice(0,80)}</Tag>:null}</article>):<Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="记录会从你的第一次实践开始积累"/>}</section>
  </>:null}</State><TaskEditor key={edit?.id??String(edit)} task={edit} onClose={()=>setEdit(undefined)}/></>;
 }
@@ -87,12 +96,14 @@ function GoalEditor({goal,close}:{goal:Goal|null;close:()=>void}){
  <div className="form-grid"><Form.Item name="startDate" label="开始日期"><DatePicker/></Form.Item><Form.Item name="targetDate" label="目标日期"><DatePicker/></Form.Item></div>
  <Form.Item name="priority" label="优先级"><Select options={[{value:1,label:'优先'},{value:2,label:'常规'},{value:3,label:'有空再做'}]}/></Form.Item><div className="modal-actions"><Button onClick={close}>取消</Button><Button type="primary" htmlType="submit" loading={save.isPending}>保存目标</Button></div></Form></Modal>;
 }
-function LogEditor({log,close}:{log:StudyLog|null;close:()=>void}){
+function LogEditor({log,close,onSavedDate}:{log:StudyLog|null;close:()=>void;onSavedDate?:(date:string)=>void}){
+ const savedDate=useRef<string|undefined>(undefined);
  const tasks=useQuery({queryKey:['tasks','log-options'],queryFn:()=>api<Page<Task>>('/tasks?size=100')});
  interface Values {studyDate:Dayjs;content:string;durationMinutes:number;achievements?:string;blockers?:string;taskIds?:string[]}
- const save=useAction<Values>(v=>{const data={...v,studyDate:v.studyDate.format('YYYY-MM-DD'),taskIds:v.taskIds??[]};return api(log?'/study-logs/'+log.id:'/study-logs',log?'PATCH':'POST',log?{version:log.version,data}:data);},close);
- return <Modal open title={log?'编辑学习记录':'写学习记录'} onCancel={close} footer={null} width={660}><Form layout="vertical" initialValues={log?{...log,studyDate:dayjs(log.studyDate)}:{studyDate:dayjs(today()),durationMinutes:30,taskIds:[]}} onFinish={v=>save.mutate(v)}>
+ const save=useAction<Values>(v=>{const data={...v,studyDate:v.studyDate.format('YYYY-MM-DD'),taskIds:v.taskIds??[]};savedDate.current=data.studyDate;return api(log?'/study-logs/'+log.id:'/study-logs',log?'PATCH':'POST',log?{version:log.version,data}:data);},()=>{if(savedDate.current)onSavedDate?.(savedDate.current);close();});
+ return <Modal open title={log?'编辑学习记录':'写学习记录'} onCancel={close} footer={null} width={660}><Form layout="vertical" initialValues={log?{...log,studyDate:dayjs(log.studyDate)}:{studyDate:dayjs(today()),durationMinutes:30,taskIds:[],activityType:'LEARNING'}} onFinish={v=>save.mutate(v)}>
  <div className="form-grid"><Form.Item name="studyDate" label="记录日期" rules={[{required:true}]}><DatePicker allowClear={false}/></Form.Item><Form.Item name="durationMinutes" label="实际分钟" rules={[{required:true}]}><InputNumber min={0} max={1440}/></Form.Item></div>
+ <Form.Item name="activityType" label="记录类型"><Select options={[{value:'LEARNING',label:'学习'},{value:'DEVELOPMENT',label:'开发实践'},{value:'REST',label:'休息（0 分钟）'}]}/></Form.Item>
  <Form.Item name="content" label="学了什么，做了什么" rules={[{required:true,whitespace:true,message:'请写下学习记录'}]}><Input.TextArea rows={5} maxLength={50000} placeholder="也可以记录今天为什么没学，或下次想从哪里继续。"/></Form.Item>
  <Form.Item name="achievements" label="实际成果"><Input.TextArea rows={2} maxLength={20000} placeholder="做出的功能、通过的测试、理解清楚的问题……"/></Form.Item><Form.Item name="blockers" label="还卡在哪里"><Input.TextArea rows={2} maxLength={20000}/></Form.Item>
  <Form.Item name="taskIds" label="关联任务"><Select mode="multiple" optionFilterProp="label" loading={tasks.isPending} options={tasks.data?.items.map(t=>({value:t.id,label:t.title}))}/></Form.Item>
@@ -100,14 +111,14 @@ function LogEditor({log,close}:{log:StudyLog|null;close:()=>void}){
  <div className="modal-actions"><Button onClick={close}>取消</Button><Button type="primary" htmlType="submit" loading={save.isPending}>保存记录</Button></div></Form></Modal>;
 }
 function Logs(){
- const [date,setDate]=useState<string>();const [page,setPage]=useState(0);const [edit,setEdit]=useState<StudyLog|null|undefined>();
+ const [search,setSearch]=useSearchParams();const date=search.get('date')||undefined;const setDate=(value?:string)=>{const next=new URLSearchParams(search);if(value)next.set('date',value);else next.delete('date');setSearch(next,{replace:true});};const [page,setPage]=useState(0);const [edit,setEdit]=useState<StudyLog|null|undefined>();
  const params=new URLSearchParams({page:String(page),size:'20'});if(date){params.set('from',date);params.set('to',date);}
  const q=useQuery({queryKey:['logs',date,page],queryFn:()=>api<Page<StudyLog>>('/study-logs?'+params)});
  return <><Header title="学习日志" description="保留自己的原话，让每一次实践都有迹可循。" action={<Button type="primary" icon={<PlusOutlined aria-hidden="true"/>} onClick={()=>setEdit(null)}>写学习记录</Button>}/><div className="filters"><DatePicker placeholder="所有日期" value={date?dayjs(date):null} onChange={d=>{setDate(d?.format('YYYY-MM-DD'));setPage(0);}}/></div>
- <State loading={q.isPending} error={q.error}>{q.data?.items.length?q.data.items.map(l=><article className="panel log-article" key={l.id}><div className="section-heading"><Space><Tag>{l.studyDate}</Tag><span className="muted">{l.durationMinutes} 分钟 · 关联 {l.taskIds.length} 项任务</span></Space><Button icon={<EditOutlined aria-hidden="true"/>} onClick={()=>setEdit(l)}>编辑</Button></div><p className="log-content">{l.content}</p>{l.achievements?<div className="log-detail"><strong>实际成果</strong><p>{l.achievements}</p></div>:null}{l.blockers?<div className="log-detail blocker"><strong>还卡在哪里</strong><p>{l.blockers}</p></div>:null}</article>):<section className="panel"><Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="还没有记录，第一次保存后就会出现在这里"/></section>}<Pagination page={page} total={q.data?.total??0} size={20} change={setPage}/></State>
- {edit!==undefined?<LogEditor key={edit?.id??'new'} log={edit} close={()=>setEdit(undefined)}/>:null}</>;
+ <State loading={q.isPending} error={q.error}>{q.data?.items.length?q.data.items.map(l=><article className="panel log-article" key={l.id}><div className="section-heading"><Space><Tag>{l.studyDate}</Tag><span className="muted">{l.durationMinutes} 分钟 · 关联 {l.taskIds.length} 项任务</span></Space><Space><NavLink to={"/coach?logId="+l.id}><Button>AI 分析</Button></NavLink><Button icon={<EditOutlined aria-hidden="true"/>} onClick={()=>setEdit(l)}>编辑</Button></Space></div><p className="log-content">{l.content}</p>{l.achievements?<div className="log-detail"><strong>实际成果</strong><p>{l.achievements}</p></div>:null}{l.blockers?<div className="log-detail blocker"><strong>还卡在哪里</strong><p>{l.blockers}</p></div>:null}</article>):<section className="panel"><Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="还没有记录，第一次保存后就会出现在这里"/></section>}<Pagination page={page} total={q.data?.total??0} size={20} change={setPage}/></State>
+ {edit!==undefined?<LogEditor key={edit?.id??'new'} log={edit} onSavedDate={date=>{setDate(date);setPage(0);}} close={()=>setEdit(undefined)}/>:null}</>;
 }
-function Settings(){return <><Header title="设置与数据" description="先把学习记录保存好，再逐步加入智能辅助。"/><section className="panel settings-panel"><h2>当前运行方式</h2><dl><dt>业务时区</dt><dd>Asia/Shanghai</dd><dt>使用范围</dt><dd>本机个人使用，尚未启用服务器登录</dd><dt>AI 提供商</dt><dd>尚未接入，下一里程碑支持 OpenAI / DeepSeek</dd><dt>数据备份</dt><dd>在 WSL 项目目录执行 <code>bash scripts/backup.sh</code></dd></dl><Alert type="info" showIcon title="原始记录优先" description="AI 未配置或不可用时，你仍可以管理目标、任务和学习记录。密钥将只保存在服务端，不通过网页填写。"/></section></>;}
-const nav=[{to:'/today',label:'今日',icon:<HomeOutlined aria-hidden="true"/>},{to:'/plan',label:'学习计划',icon:<UnorderedListOutlined aria-hidden="true"/>},{to:'/goals',label:'长期目标',icon:<FlagOutlined aria-hidden="true"/>},{to:'/logs',label:'学习日志',icon:<BookOutlined aria-hidden="true"/>},{to:'/settings',label:'设置与数据',icon:<SettingOutlined aria-hidden="true"/>}];
-function Workspace(){const loc=useLocation();return <div className="workspace"><aside className="sidebar"><NavLink to="/today" className="brand"><span className="brand-mark">G</span><span>GrowthHub<small>把实践变成成长</small></span></NavLink><nav aria-label="主导航">{nav.map(n=><NavLink key={n.to} to={n.to}>{n.icon}<span>{n.label}</span></NavLink>)}</nav><div className="sidebar-bottom"><span className="local-dot"/>本地个人工作空间<p>按自己的节奏，持续向前。</p></div></aside><main key={loc.pathname}><Routes><Route path="/today" element={<Today/>}/><Route path="/plan" element={<Plan/>}/><Route path="/goals" element={<Goals/>}/><Route path="/logs" element={<Logs/>}/><Route path="/settings" element={<Settings/>}/><Route path="*" element={<Navigate to="/today" replace/>}/></Routes><footer>记录真实的实践，而不只是完成打卡。</footer></main></div>;}
-createRoot(document.getElementById('root')!).render(<StrictMode><ConfigProvider button={{autoInsertSpace:false}} locale={zhCN} theme={{token:{colorPrimary:'#147d64',colorInfo:'#147d64',borderRadius:8,fontFamily:'"Segoe UI", "Microsoft YaHei", sans-serif',controlHeight:38}}}><AntApp><QueryClientProvider client={client}><BrowserRouter><Workspace/></BrowserRouter></QueryClientProvider></AntApp></ConfigProvider></StrictMode>);
+function Settings(){return <AiSettings/>;}
+const nav=[{to:'/today',label:'今日',icon:<HomeOutlined aria-hidden="true"/>},{to:'/plan',label:'学习计划',icon:<UnorderedListOutlined aria-hidden="true"/>},{to:'/goals',label:'长期目标',icon:<FlagOutlined aria-hidden="true"/>},{to:'/logs',label:'学习日志',icon:<BookOutlined aria-hidden="true"/>},{to:'/coach',label:'AI 教练',icon:<BookOutlined aria-hidden="true"/>},{to:'/weekly',label:'周计划与复盘',icon:<FlagOutlined aria-hidden="true"/>},{to:'/achievements',label:'成果记录',icon:<CheckOutlined aria-hidden="true"/>},{to:'/feeds',label:'技术资讯',icon:<BookOutlined aria-hidden="true"/>},{to:'/settings',label:'设置与数据',icon:<SettingOutlined aria-hidden="true"/>}];
+function Workspace(){const loc=useLocation();return <div className="workspace"><aside className="sidebar"><NavLink to="/today" className="brand"><span className="brand-mark">G</span><span>GrowthHub<small>把实践变成成长</small></span></NavLink><nav aria-label="主导航">{nav.map(n=><NavLink key={n.to} to={n.to}>{n.icon}<span>{n.label}</span></NavLink>)}</nav><div className="sidebar-bottom"><span className="local-dot"/>本地个人工作空间<p>按自己的节奏，持续向前。</p></div></aside><main key={loc.pathname}><Suspense fallback={<Skeleton active/>}><Routes><Route path="/today" element={<Today/>}/><Route path="/plan" element={<Plan/>}/><Route path="/goals" element={<Goals/>}/><Route path="/logs" element={<Logs/>}/><Route path="/settings" element={<Settings/>}/><Route path="/coach" element={<Coach/>}/><Route path="/weekly" element={<Weekly/>}/><Route path="/achievements" element={<Achievements/>}/><Route path="/feeds" element={<Feeds/>}/><Route path="*" element={<Navigate to="/today" replace/>}/></Routes></Suspense><footer>记录真实的实践，而不只是完成打卡。</footer></main></div>;}
+createRoot(document.getElementById('root')!).render(<StrictMode><ConfigProvider button={{autoInsertSpace:false}} locale={zhCN} theme={{token:{colorPrimary:'#147d64',colorInfo:'#147d64',borderRadius:8,fontFamily:'"Segoe UI", "Microsoft YaHei", sans-serif',controlHeight:38}}}><AntApp><QueryClientProvider client={client}><AuthGate><BrowserRouter><Workspace/></BrowserRouter></AuthGate></QueryClientProvider></AntApp></ConfigProvider></StrictMode>);

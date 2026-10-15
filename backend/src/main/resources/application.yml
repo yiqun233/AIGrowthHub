@@ -16,6 +16,14 @@ spring:
 server:
   address: ${SERVER_ADDRESS:127.0.0.1}
   port: ${SERVER_PORT:8080}
+  servlet:
+    session:
+      timeout: ${SESSION_TIMEOUT:30m}
+      cookie:
+        name: GROWTHHUB_SESSION
+        http-only: true
+        secure: ${SESSION_COOKIE_SECURE:false}
+        same-site: strict
   error:
     include-message: never
     include-stacktrace: never

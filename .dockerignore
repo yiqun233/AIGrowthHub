@@ -1,0 +1,14 @@
+**/node_modules
+**/target
+**/dist
+**/test-results
+**/playwright-report
+.git
+.env
+.env.*
+**/.env
+**/.env.*
+.runtime
+backups
+**/__pycache__
+*.log

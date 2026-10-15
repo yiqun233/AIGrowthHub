@@ -14,3 +14,7 @@ backups/
 __pycache__/
 *.pyc
 *.tsbuildinfo
+
+infra/.env.production
+infra/.env.*
+!infra/.env.production.example
