@@ -19,5 +19,5 @@ test('主流提供商选择和个人数据下载', async ({ page }) => {
  await page.getByRole('button',{name:'导出全部个人数据'}).click();
  await expect(page.getByText('导出暂时不可用，请重试',{exact:true})).toBeVisible();
  await page.setViewportSize({width:390,height:844});
- expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBeTruthy();
+ await expect.poll(()=>page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBeTruthy();
 });
