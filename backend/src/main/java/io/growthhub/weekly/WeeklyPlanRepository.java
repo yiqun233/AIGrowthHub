@@ -4,4 +4,5 @@ import java.time.LocalDate;
 import java.util.*;
 public interface WeeklyPlanRepository extends JpaRepository<WeeklyPlan,UUID> {
     Optional<WeeklyPlan> findByWeekStart(LocalDate weekStart);
+    java.util.List<WeeklyPlan> findByLearningStageIdOrderByWeekStartAsc(UUID learningStageId);
 }

@@ -20,16 +20,16 @@
 
 状态码：201 创建、200 查询/更新、400 输入不合法、404 不存在、409 版本/约束冲突。归档目标保留历史关联，不能再创建新关联任务。
 
-当前有意不做硬删除，使用归档或取消。AI 分析、设置与建议接口已在 M2 实现，详见 [AI 契约](ai-contract.md)。数据导出接口仍未实现。
+当前有意不做硬删除，使用归档或取消。AI 分析、设置与建议接口详见 [AI 契约](ai-contract.md)。学习主题阶段、来源关联、阶段复盘与导出演进见[学习主题阶段闭环](learning-stages.md)。
 
 ## 个人数据导出
 
-`GET /api/v1/exports` 返回 JSON 附件、no-store 缓存策略。包含八张业务表的一致快照、schemaVersion、exportedAt 和 counts。大小/条数超限返回 413 EXPORT_TOO_LARGE；详见 [M3 试用与导出](m3-trial.md)。提供商配置见 [主流模型配置](model-providers.md)。
+`GET /api/v1/exports` 返回 JSON 附件、no-store 缓存策略。包含 17 张业务表的一致快照、schemaVersion=`growthhub-export-v4`、exportedAt 和 counts。大小/条数超限返回 413 EXPORT_TOO_LARGE；详见 [M3 试用与导出](m3-trial.md)。提供商配置见 [主流模型配置](model-providers.md)。
 
 ## 周计划与复盘
 
-周一开始的事实汇总、计划编辑归档、复盘草稿/刷新/确认见 [周工作台 API](weekly-workspace.md)。导出 schemaVersion 已升级为 growthhub-export-v2，增加 weekly_plan/weekly_review，原有八张表保持。
+周一开始的事实汇总、计划编辑归档、复盘草稿/刷新/确认见 [周工作台 API](weekly-workspace.md)。当前 JSON 导出为 `growthhub-export-v4`。
 
 ## 完整初版增量
 
-成果、周归属、AI 周草稿、多平台资讯订阅、登录与导出 v3 的接口契约见 [剩余功能说明](remaining-features.md)，部署与安全会话见 [运行手册](deployment.md)。计划范围与外部待验收项见 [逐项核对](plan-audit.md)。
+成果、周归属、多平台资讯订阅、登录与导出的接口契约见 [完整功能接口](remaining-features.md)，部署与安全会话见 [运行手册](deployment.md)。计划范围与外部待验收项见 [V1.2 计划核对](plan-audit.md)。

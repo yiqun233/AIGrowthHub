@@ -13,7 +13,7 @@ test('主流提供商选择和个人数据下载', async ({ page }) => {
  const download=await downloading;expect(download.suggestedFilename()).toMatch(/^GrowthHub-export-.*\.json$/);
  const path=await download.path();expect(path).toBeTruthy();
  const raw=await fs.readFile(path!,'utf8');const data=JSON.parse(raw);
- expect(data.schemaVersion).toBe('growthhub-export-v3');expect(raw).not.toContain('test-only-');
+ expect(data.schemaVersion).toBe('growthhub-export-v4');expect(raw).not.toContain('test-only-');
  expect(data.counts.study_log).toBe(data.data.study_log.length);
  await page.route('**/api/v1/exports',route=>route.fulfill({status:500,json:{message:'导出暂时不可用，请重试'}}));
  await page.getByRole('button',{name:'导出全部个人数据'}).click();

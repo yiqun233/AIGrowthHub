@@ -3,6 +3,7 @@ import io.growthhub.common.ApiException;
 import io.growthhub.coach.AiJson;
 import io.growthhub.studylog.*;
 import io.growthhub.task.*;
+import io.growthhub.stage.*;
 import java.time.*;
 import java.time.temporal.TemporalAdjusters;
 import java.util.*;
@@ -14,9 +15,9 @@ import static io.growthhub.weekly.WeeklyContracts.*;
 @Service
 public class WeeklyService {
     private final WeeklyPlanRepository plans;private final WeeklyReviewRepository reviews;
-    private final StudyLogRepository logs;private final TaskRepository tasks;private final AiJson json;private final io.growthhub.common.BusinessClock clock;
-    public WeeklyService(WeeklyPlanRepository plans,WeeklyReviewRepository reviews,StudyLogRepository logs,TaskRepository tasks,AiJson json,io.growthhub.common.BusinessClock clock){
-        this.plans=plans;this.reviews=reviews;this.logs=logs;this.tasks=tasks;this.json=json;this.clock=clock;
+    private final StudyLogRepository logs;private final TaskRepository tasks;private final AiJson json;private final io.growthhub.common.BusinessClock clock;private final LearningStageRepository stages;
+    public WeeklyService(WeeklyPlanRepository plans,WeeklyReviewRepository reviews,StudyLogRepository logs,TaskRepository tasks,AiJson json,io.growthhub.common.BusinessClock clock,LearningStageRepository stages){
+        this.plans=plans;this.reviews=reviews;this.logs=logs;this.tasks=tasks;this.json=json;this.clock=clock;this.stages=stages;
     }
     public static LocalDate monday(LocalDate date){return date.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));}
     private void requireMonday(LocalDate date){if(!date.equals(monday(date)))throw new ApiException(400,"INVALID_WEEK_START","周起始日期必须是周一");}
@@ -27,7 +28,7 @@ public class WeeklyService {
         Instant from=start.atStartOfDay(zone).toInstant(),to=start.plusDays(7).atStartOfDay(zone).toInstant();
         var completed=tasks.findAll((r,q,b)->b.and(b.equal(r.get("status"),Task.Status.DONE),b.greaterThanOrEqualTo(r.get("completedAt"),from),b.lessThan(r.get("completedAt"),to)),page);
         if(lp.getTotalElements()>500||scheduled.getTotalElements()>500||completed.getTotalElements()>500)throw new ApiException(413,"WEEK_TOO_LARGE","该周记录超过在线复盘上限，请使用数据导出查看");
-        var logViews=lp.stream().map(l->new StudyLogController.View(l.id,l.studyDate,l.content,l.durationMinutes,l.achievements,l.blockers,new TreeSet<>(l.taskIds),l.version,l.activityType)).toList();
+        var logViews=lp.stream().map(StudyLogController.View::of).toList();
         var ids=new TreeSet<UUID>();lp.forEach(l->ids.addAll(l.taskIds));
         if(ids.size()>1000)throw new ApiException(413,"WEEK_TOO_LARGE","该周关联任务过多，请使用数据导出查看");
         var linked=tasks.findAllById(ids).stream().sorted(Comparator.comparing(t->t.id)).map(TaskController.View::of).toList();
@@ -48,12 +49,14 @@ public class WeeklyService {
     @Transactional(readOnly=true) public java.util.List<Plan> plans(){return plans.findAll(PageRequest.of(0,200,Sort.by(Sort.Direction.DESC,"weekStart"))).stream().map(Plan::of).toList();}
     @Transactional(readOnly=true,isolation=Isolation.REPEATABLE_READ) public Review getReview(UUID id){var r=reviews.findById(id).orElseThrow(ApiException::missing);return view(r,facts(r.weekStart));}
     @Transactional public Plan createPlan(PlanInput i){
+        LearningStageService.requireExisting(stages,i.learningStageId());
         requireMonday(i.weekStart());if(plans.findByWeekStart(i.weekStart()).isPresent())throw new ApiException(409,"WEEK_PLAN_EXISTS","该周已有计划，请编辑现有计划");
-        var p=new WeeklyPlan();p.weekStart=i.weekStart();p.theme=i.theme().strip();p.budgetMinutes=i.budgetMinutes();p.notes=i.notes();return Plan.of(plans.saveAndFlush(p));
+        var p=new WeeklyPlan();p.weekStart=i.weekStart();p.theme=i.theme().strip();p.budgetMinutes=i.budgetMinutes();p.notes=i.notes();p.learningStageId=i.learningStageId();return Plan.of(plans.saveAndFlush(p));
     }
     @Transactional public Plan updatePlan(UUID id,PlanUpdate i){
+        LearningStageService.requireExisting(stages,i.learningStageId());
         var p=plans.findById(id).orElseThrow(ApiException::missing);ApiException.version(p.version,i.version());
-        p.theme=i.theme().strip();p.budgetMinutes=i.budgetMinutes();p.notes=i.notes();p.status=i.status();return Plan.of(plans.saveAndFlush(p));
+        p.theme=i.theme().strip();p.budgetMinutes=i.budgetMinutes();p.notes=i.notes();p.status=i.status();p.learningStageId=i.learningStageId();return Plan.of(plans.saveAndFlush(p));
     }
     @Transactional(isolation=Isolation.REPEATABLE_READ) public Review createReview(ReviewInput i){
         requireMonday(i.weekStart());if(reviews.findByWeekStart(i.weekStart()).isPresent())throw new ApiException(409,"WEEK_REVIEW_EXISTS","该周已有复盘，请继续编辑");

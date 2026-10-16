@@ -1,12 +1,12 @@
 import { useState } from 'react';
 import { NavLink, useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Alert, App, Button, DatePicker, Empty, Form, Input, InputNumber, Modal, Popconfirm, Skeleton, Space, Tag } from 'antd';
+import { Alert, App, Button, DatePicker, Empty, Form, Input, InputNumber, Modal, Popconfirm, Select, Skeleton, Space, Tag } from 'antd';
 import dayjs from 'dayjs';
 import { api, ApiError, today } from './api';
 import { WorkPanel } from './work';
-import type { StudyLog, Task } from './api';
-interface WeeklyPlan {id:string;weekStart:string;theme:string;budgetMinutes:number;notes:string;status:'ACTIVE'|'ARCHIVED';version:number}
+import type { LearningStage, StudyLog, Task } from './api';
+interface WeeklyPlan {id:string;weekStart:string;theme:string;budgetMinutes:number;notes:string;status:'ACTIVE'|'ARCHIVED';version:number;learningStageId:string|null}
 interface Facts {weekStart:string;weekEnd:string;timezone:string;plan:WeeklyPlan|null;summary:{logCount:number;actualMinutes:number;scheduledTaskCount:number;scheduledMinutes:number;scheduledDoneCount:number;completedDuringWeekCount:number;learningMinutes:number;developmentMinutes:number};logs:StudyLog[];scheduledTasks:Task[];completedDuringWeek:Task[];linkedTasks:Task[]}
 interface Review {id:string;weekStart:string;finalContent:string;status:'DRAFT'|'CONFIRMED';confirmedAt:string|null;version:number;stale:boolean;snapshot:Facts}
 interface Overview {facts:Facts;review:Review|null}
@@ -33,11 +33,12 @@ export function Weekly(){
  </>:null}</>;
 }
 function PlanEditor({weekStart,plan,close}:{weekStart:string;plan:WeeklyPlan|null;close:()=>void}){
- interface Values {theme:string;budgetMinutes:number;notes:string}
+ const stages=useQuery({queryKey:['stages'],queryFn:()=>api<LearningStage[]>('/stages')});
+ interface Values {theme:string;budgetMinutes:number;notes:string;learningStageId?:string}
  const save=useWrite<Values>(v=>api(plan?'/weekly-plans/'+plan.id:'/weekly-plans',plan?'PATCH':'POST',plan?{...v,version:plan.version,status:plan.status}:{...v,weekStart}),close);
  const archive=useWrite(()=>api('/weekly-plans/'+plan!.id,'PATCH',{...plan,status:plan!.status==='ACTIVE'?'ARCHIVED':'ACTIVE'}),close);
- return <Modal open title={plan?'编辑周计划':'建立周计划'} onCancel={close} footer={null}><Form layout="vertical" initialValues={plan??{theme:'',budgetMinutes:300,notes:''}} onFinish={v=>save.mutate(v)}>
- <p className="muted">周一 {weekStart} 开始。日期固定，防止历史周计划被移到其他周。</p><Form.Item name="theme" label="本周主题" rules={[{required:true,whitespace:true,message:'请输入本周主题'}]}><Input maxLength={200}/></Form.Item><Form.Item name="budgetMinutes" label="整周可用分钟" rules={[{required:true}]}><InputNumber min={0} max={10080}/></Form.Item><Form.Item name="notes" label="想完成的成果与安排"><Input.TextArea rows={4} maxLength={10000}/></Form.Item>
+ return <Modal open title={plan?'编辑周计划':'建立周计划'} onCancel={close} footer={null}><Form layout="vertical" initialValues={plan??{theme:'',budgetMinutes:300,notes:'',learningStageId:stages.data?.find(s=>s.status==='ACTIVE')?.id}} onFinish={v=>save.mutate(v)}>
+ <p className="muted">周一 {weekStart} 开始。日期固定，防止历史周计划被移到其他周。</p><Form.Item name="theme" label="本周主题" rules={[{required:true,whitespace:true,message:'请输入本周主题'}]}><Input maxLength={200}/></Form.Item><Form.Item name="learningStageId" label="关联学习主题"><Select allowClear loading={stages.isPending} options={stages.data?.filter(s=>s.status!=='CLOSED'||s.id===plan?.learningStageId).map(s=>({value:s.id,label:s.title}))}/></Form.Item><Form.Item name="budgetMinutes" label="整周可用分钟" rules={[{required:true}]}><InputNumber min={0} max={10080}/></Form.Item><Form.Item name="notes" label="想完成的成果与安排"><Input.TextArea rows={4} maxLength={10000}/></Form.Item>
  <div className="modal-actions">{plan?<Button loading={archive.isPending} onClick={()=>archive.mutate(undefined)}>{plan.status==='ACTIVE'?'归档周计划':'恢复周计划'}</Button>:null}<Button onClick={close}>取消</Button><Button type="primary" htmlType="submit" loading={save.isPending}>保存周计划</Button></div></Form></Modal>;
 }
 function ReviewEditor({review:r}:{review:Review}){

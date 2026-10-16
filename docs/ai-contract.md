@@ -111,3 +111,7 @@ POST /ai/analyses 使用调用方生成的 Idempotency-Key，键 8–128 位且�
 ## 主流提供商扩展（2026-10-15）
 
 当前枚举已扩展为 OPENAI、DEEPSEEK、ANTHROPIC、GEMINI、QWEN、ZHIPU、MOONSHOT、DOUBAO、OPENROUTER、CUSTOM；旧章节中的双提供商范围属于初版。Claude 使用原生 Messages，Gemini 使用原生 generateContent，其余沿用 OpenAI 兼容协议。可按模型显式覆盖输出模式/token 参数。接口契约、默认地址与密钥配置详见 [主流模型配置](model-providers.md)。所有适配仍共用业务结果校验和人工确认。
+
+## V1.2 阶段总结
+
+新增 `STAGE_REVIEW` AI 作业，提示词版本 `stage-v1`，沿用异步持久化作业、同一活动任务限制、自然日上限、超时/重启恢复、60000 字符上下文限制和结构化证据校验。用户必须主动提交并同意发送阶段来源。上下文包括阶段目标与验收条件、显式关联的日志/任务/成果、阶段关联周计划及其周复盘。证据引用必须来自本次冻结快照；空阶段可无证据，但应说明缺少记录。输出只作为可编辑复盘草稿，不创建任务或关闭阶段。采用 AI 草稿后仍由用户选择结果并确认，来源改变时要求刷新并重新核对。接口详见 [学习主题阶段闭环](learning-stages.md)。

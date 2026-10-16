@@ -3,6 +3,7 @@ import io.growthhub.coach.*;
 import io.growthhub.common.ApiException;
 import io.growthhub.weekly.*;
 import io.growthhub.feed.*;
+import io.growthhub.stage.*;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.*;
@@ -14,12 +15,14 @@ import tools.jackson.databind.JsonNode;
 public class AiWorkService {
  private final AiWorkRepository repo;private final WeeklyService weeks;private final WeeklyReviewRepository reviews;private final FeedItemRepository feeds;
  private final AiSettingRepository settings;private final AiConfiguration config;private final AiJson json;private final JdbcTemplate jdbc;
- public AiWorkService(AiWorkRepository repo,WeeklyService weeks,WeeklyReviewRepository reviews,FeedItemRepository feeds,AiSettingRepository settings,AiConfiguration config,AiJson json,JdbcTemplate jdbc){this.repo=repo;this.weeks=weeks;this.reviews=reviews;this.feeds=feeds;this.settings=settings;this.config=config;this.json=json;this.jdbc=jdbc;}
+ private final LearningStageService stages;
+ public AiWorkService(AiWorkRepository repo,WeeklyService weeks,WeeklyReviewRepository reviews,FeedItemRepository feeds,AiSettingRepository settings,AiConfiguration config,AiJson json,JdbcTemplate jdbc,LearningStageService stages){this.repo=repo;this.weeks=weeks;this.reviews=reviews;this.feeds=feeds;this.settings=settings;this.config=config;this.json=json;this.jdbc=jdbc;this.stages=stages;}
  public record Input(@NotNull Long version,@NotNull AiContracts.Provider provider,@NotBlank @Pattern(regexp="[A-Za-z0-9][A-Za-z0-9._:/-]{0,99}") String model,@AssertTrue boolean consent){}
  public record View(UUID id,String kind,UUID targetId,AiContracts.Provider provider,String model,String status,Object snapshot,Object result,int attemptCount,Long inputTokens,Long outputTokens,Long durationMs,String errorCode,String errorMessage,Instant createdAt,String promptVersion,String schemaVersion){}
  private View view(AiWork w){return new View(w.id,w.kind,w.targetId,w.provider,w.model,w.status,json.read(w.inputSnapshot,Object.class),w.outputJson==null?null:json.read(w.outputJson,Object.class),w.attemptCount,w.inputTokens,w.outputTokens,w.durationMs,w.errorCode,w.errorMessage,w.createdAt,w.promptVersion,w.schemaVersion);}
  private Object source(String kind,UUID id,Long version){
   if(kind.equals("WEEKLY_REVIEW")){var review=weeks.getReview(id);if(version!=null)ApiException.version(review.version(),version);if(review.status()!=WeeklyReview.Status.DRAFT)throw new ApiException(409,"REVIEW_READ_ONLY","已确认复盘不能重新生成");return weeks.overview(review.weekStart()).facts();}
+  if(kind.equals("STAGE_REVIEW")){var review=stages.getReview(id);if(version!=null)ApiException.version(review.version(),version);if(review.status()!=LearningStageReview.Status.DRAFT)throw new ApiException(409,"STAGE_REVIEW_READ_ONLY","已确认的阶段复盘不能重新生成");if(review.stale())throw new ApiException(409,"STALE_CONTEXT","阶段来源已变化，请先刷新复盘来源");return stages.detail(review.stageId()).facts();}
   var item=feeds.findById(id).orElseThrow(ApiException::missing);if(version!=null)ApiException.version(item.version,version);return FeedController.Item.of(item);
  }
  @Transactional(isolation=Isolation.REPEATABLE_READ) public View create(String kind,UUID id,String key,Input i){
@@ -30,7 +33,7 @@ public class AiWorkService {
   var since=LocalDate.now(config.zone()).atStartOfDay(config.zone()).toInstant();
   if(jdbc.queryForObject("select (select count(*) from ai_analysis where created_at>=?)+(select count(*) from ai_work where created_at>=?)",Long.class,java.sql.Timestamp.from(since),java.sql.Timestamp.from(since))>=config.limit())throw new ApiException(429,"DAILY_LIMIT","今日 AI 分析次数已达上限");
   String snapshot=json.write(source(kind,id,i.version()));if(snapshot.length()>60000)throw new ApiException(413,"CONTEXT_TOO_LARGE","来源过长，请整理后再生成；原文仍保留");
-  var w=new AiWork();w.kind=kind;w.promptVersion=kind.equals("WEEKLY_REVIEW")?"weekly-v1":"feed-v1";w.targetId=id;w.provider=i.provider();w.model=i.model();w.requestKey=key;w.requestHash=hash;w.inputSnapshot=snapshot;w.sourceHash=json.hash(snapshot);repo.saveAndFlush(w);return view(w);
+  var w=new AiWork();w.kind=kind;w.promptVersion=kind.equals("WEEKLY_REVIEW")?"weekly-v1":kind.equals("STAGE_REVIEW")?"stage-v1":"feed-v1";w.targetId=id;w.provider=i.provider();w.model=i.model();w.requestKey=key;w.requestHash=hash;w.inputSnapshot=snapshot;w.sourceHash=json.hash(snapshot);repo.saveAndFlush(w);return view(w);
  }
  @Transactional(readOnly=true) public View get(UUID id){return view(repo.findById(id).orElseThrow(ApiException::missing));}
  @Transactional(readOnly=true) public List<View> history(String kind,UUID id){return repo.findTop20ByKindAndTargetIdOrderByCreatedAtDesc(kind,id).stream().map(this::view).toList();}
@@ -48,7 +51,9 @@ public class AiWorkService {
    if(w.kind.equals("FEED_SUMMARY"))refs.put(input.path("id").asString(""),input.path("title").asString("")+"\n"+input.path("content").asString(""));
    else{
     for(var l:input.path("logs"))refs.put(l.path("id").asString(""),l.path("content").asString("")+"\n"+l.path("achievements").asString("")+"\n"+l.path("blockers").asString(""));
-    for(String key:List.of("scheduledTasks","completedDuringWeek","linkedTasks"))for(var t:input.path(key))refs.put(t.path("id").asString(""),t.path("title").asString("")+"\n"+t.path("detail").asString("")+"\n"+t.path("acceptanceCriteria").asString(""));
+    for(String key:List.of("scheduledTasks","completedDuringWeek","linkedTasks","tasks"))for(var t:input.path(key))refs.put(t.path("id").asString(""),t.path("title").asString("")+"\n"+t.path("detail").asString("")+"\n"+t.path("acceptanceCriteria").asString(""));
+    for(var a:input.path("achievements"))refs.put(a.path("id").asString(""),a.path("title").asString("")+"\n"+a.path("description").asString(""));
+    for(var r:input.path("weeklyReviews"))refs.put(r.path("id").asString(""),r.path("finalContent").asString(""));
    }
    if(!n.path("evidence").isArray()||n.path("evidence").size()>20||!refs.isEmpty()&&n.path("evidence").isEmpty())throw new IllegalArgumentException();
    for(var e:n.path("evidence")){if(!e.isObject()||!e.propertyNames().equals(Set.of("sourceId","quote"))||!e.path("sourceId").isString()||!e.path("quote").isString())throw new IllegalArgumentException();String id=e.path("sourceId").stringValue(),quote=e.path("quote").stringValue();if(quote.isBlank()||quote.length()>1000||!refs.containsKey(id)||!refs.get(id).contains(quote))throw new IllegalArgumentException();}
@@ -61,4 +66,5 @@ public class AiWorkService {
   if(!json.hash(json.write(source(w.kind,w.targetId,null))).equals(w.sourceHash))throw new ApiException(409,"STALE_CONTEXT","周来源已变化，请重新生成草稿");
   r.aiDraft=w.outputJson;r.sourceSnapshot=w.inputSnapshot;r.sourceHash=w.sourceHash;var n=json.tree(w.outputJson);var content=new StringBuilder(n.path("summary").asString(""));content.append("\n\n下周调整：\n");for(var next:n.path("nextSteps"))content.append("- ").append(next.stringValue()).append('\n');content.append("\n局限：").append(n.path("limitations").asString(""));r.finalContent=content.toString();reviews.saveAndFlush(r);return weeks.getReview(reviewId);
  }
+ @Transactional(isolation=Isolation.REPEATABLE_READ) public StageContracts.Review applyStage(UUID reviewId,UUID workId,Long version){return stages.applyAi(reviewId,workId,version);}
 }

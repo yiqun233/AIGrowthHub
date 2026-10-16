@@ -71,7 +71,7 @@ class Remaining(unittest.TestCase):
   code,error=call('/ai/analyses','POST',{'sourceLogId':source['id'],'targetDate':monday(9),'budgetMinutes':60,'provider':'OPENAI','model':'test-openai','feedback':''},str(uuid.uuid4()))
   self.assertEqual(code,409,error);self.assertEqual(wait(job)['status'],'FAILED');self.assertEqual(ok('/tasks?size=1')['total'],before)
  def test_08_export_covers_all_entities_without_credentials(self):
-  export=ok('/exports');self.assertEqual(export['schemaVersion'],'growthhub-export-v3');self.assertEqual(len(export['data']),15)
+  export=ok('/exports');self.assertEqual(export['schemaVersion'],'growthhub-export-v4');self.assertEqual(len(export['data']),17)
   for t,count in export['counts'].items():self.assertEqual(count,len(export['data'][t]))
   for w in export['data']['ai_work']:self.assertNotIn('request_key',w);self.assertNotIn('source_hash',w)
   self.assertNotIn('test-only-',json.dumps(export))

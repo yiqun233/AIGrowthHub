@@ -5,6 +5,7 @@ import java.time.LocalDate;
 @Entity @Table(name="weekly_plan")
 public class WeeklyPlan extends BaseEntity {
     public LocalDate weekStart;
+    public java.util.UUID learningStageId;
     public String theme;
     public int budgetMinutes;
     @Column(columnDefinition="text") public String notes="";

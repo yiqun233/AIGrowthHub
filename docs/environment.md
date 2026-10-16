@@ -56,6 +56,12 @@ Maven Wrapper 生成时沿用了用户已有的阿里云 Maven 镜像（仅下�
 
 Windows 访问核验：`http://127.0.0.1:5173` 返回 HTTP 200，页面包含 GrowthHub。当前 mirrored + autoProxy 环境下 localhost 请求曾超时，建议使用明确 IPv4 地址；未更改 .wslconfig、代理、防火墙或端口转发。
 
+## M7 学习主题阶段增量（2026-10-16）
+
+未安装新环境组件。Flyway V8 已于 2026-10-16 17:18（Asia/Shanghai）成功应用到本机开发库 `growthhub`；启动日志确认 schema 到 v8，后端于 17:18 启动成功。V8 新增阶段/阶段复盘表，并为任务、日志、周计划和成果添加可空阶段外键，不回填既有记录。
+
+迁移后开发库备份：`backups/growthhub-20261016T091936Z-1428978.dump`。新数据导出 schema 为 `growthhub-export-v4`，覆盖 17 张业务表。Maven/前端构建证据及未运行测试范围见 `docs/progress.md`。
+
 
 ## M2 增量记录
 

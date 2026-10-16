@@ -6,6 +6,7 @@ import io.growthhub.common.BaseEntity;
 @Entity @Table(name="study_log")
 public class StudyLog extends BaseEntity {
     public LocalDate studyDate;
+    public UUID learningStageId;
     @Column(columnDefinition="text") public String content;
     public int durationMinutes;
     public String activityType="LEARNING";

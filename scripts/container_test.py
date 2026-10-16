@@ -35,7 +35,7 @@ _,raw,headers=request('/api/v1/auth/session');state=json.loads(raw);assert state
 assert request('/api/v1/auth/login','POST',{'username':settings['AUTH_USERNAME'],'password':settings['AUTH_PASSWORD']},state['csrfToken'])[0]==200
 for path in ['/api/v1/goals','/api/v1/weeks','/api/v1/feed/items','/api/v1/achievements']:
  assert request(path)[0]==200,path
-code,raw,_=request('/api/v1/exports');assert code==200 and json.loads(raw)['schemaVersion']=='growthhub-export-v3'
+code,raw,_=request('/api/v1/exports');assert code==200 and json.loads(raw)['schemaVersion']=='growthhub-export-v4'
 assert request('/api/v1/goals','POST',{'title':'must fail without csrf'})[0]==403
 browser_env=os.environ.copy();browser_env.update(settings);browser_env.update(HTTPS_BASE_URL=base,NO_PROXY='localhost,127.0.0.1,::1',no_proxy='localhost,127.0.0.1,::1')
 subprocess.run([shutil.which('npm'),'run','test:e2e','--','--config','playwright.auth.config.ts'],cwd=ROOT/'frontend',env=browser_env,check=True)

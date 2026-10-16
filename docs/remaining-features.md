@@ -1,4 +1,4 @@
-# 初版计划剩余功能接口与边界
+# 完整功能接口与边界
 
 ## 成果
 
@@ -52,4 +52,6 @@ PATCH /api/v1/settings 可选 timezone（有效 IANA 名称），历史日期不
 
 GET /api/v1/auth/session 返回认证启用状态、会话状态、业务时区与 CSRF token。启用认证时 POST /auth/login 使用表单 username/password 并携带 X-CSRF-TOKEN；POST /auth/logout 同样校验 CSRF。业务接口未登录 401，非法 CSRF 403，登录限流 429；详见 deployment.md。
 
-导出升级 growthhub-export-v3，覆盖 15 张业务表；保留成果、来源、候选、AI 作业和周复盘快照，排除密钥、请求幂等键和内部哈希。大小/条数限制不变，不提供未经设计的 JSON 导入。完整恢复使用数据库备份。
+学习主题阶段 API、阶段关联、阶段 AI 作业与阶段快照见 [学习主题阶段闭环](learning-stages.md)。
+
+导出升级 `growthhub-export-v4`，覆盖 17 张业务表；包含学习阶段和阶段复盘，保留成果、来源、候选、AI 作业和周/阶段复盘快照，排除密钥、请求幂等键和内部来源哈希。大小/条数限制不变，不提供 JSON 导入。完整恢复使用数据库备份。

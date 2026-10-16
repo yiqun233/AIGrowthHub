@@ -7,6 +7,7 @@ import io.growthhub.common.BaseEntity;
 public class Task extends BaseEntity {
     public UUID goalId;
     public UUID weeklyPlanId;
+    public UUID learningStageId;
     public String title;
     @Column(columnDefinition="text") public String detail="";
     public LocalDate scheduledDate;

@@ -1,7 +1,8 @@
 export type TaskStatus='TODO'|'IN_PROGRESS'|'DONE'|'CANCELLED';
 export interface Goal {id:string;title:string;description:string;startDate:string|null;targetDate:string|null;priority:number;status:'ACTIVE'|'ARCHIVED';version:number}
-export interface Task {id:string;goalId:string|null;title:string;detail:string;scheduledDate:string;estimateMinutes:number;priority:number;status:TaskStatus;acceptanceCriteria:string;completedAt:string|null;version:number;weeklyPlanId?:string|null}
-export interface StudyLog {id:string;studyDate:string;content:string;durationMinutes:number;activityType?:string;achievements:string;blockers:string;taskIds:string[];version:number}
+export interface LearningStage {id:string;title:string;desiredOutcome:string;acceptanceCriteria:string;startDate:string;targetDate:string|null;status:'ACTIVE'|'PAUSED'|'CLOSED';outcome:'ACHIEVED'|'PARTIAL'|'RESCOPED'|'ABANDONED'|null;version:number}
+export interface Task {id:string;goalId:string|null;title:string;detail:string;scheduledDate:string;estimateMinutes:number;priority:number;status:TaskStatus;acceptanceCriteria:string;completedAt:string|null;version:number;weeklyPlanId?:string|null;learningStageId?:string|null}
+export interface StudyLog {id:string;studyDate:string;content:string;durationMinutes:number;activityType?:string;achievements:string;blockers:string;taskIds:string[];version:number;learningStageId?:string|null}
 export interface Page<T> {items:T[];total:number;page:number;size:number}
 export interface Dashboard {date:string;timezone:string;tasks:Task[];recentLogs:StudyLog[];plannedCount:number;completedCount:number;weekDurationMinutes:number;overdueCount:number}
 export class ApiError extends Error { constructor(message:string,public code:string,public status:number){super(message);} }

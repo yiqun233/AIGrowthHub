@@ -53,4 +53,6 @@ JSON 导出升级为 growthhub-export-v2，增加 weekly_plan/weekly_review，�
 
 M3 的真实模型联调和七天观察仍独立待办，不因开发 M4 而标记完成。本轮是 M4 的第一个可验收切片，不宣称整个 M4 完成。
 
-完整初版更新：此前“后续切片”中的成果、周归属和 AI 周复盘已在本轮实现。统计增加学习/开发分类，使用可保存业务时区；新增任务 weekly_plan_id。接口与保护规则以 remaining-features.md 为准，导出已升级 v3。
+完整初版更新：此前“后续切片”中的成果、周归属和 AI 周复盘已实现。统计增加学习/开发分类，使用可保存业务时区；新增任务 `weekly_plan_id`。接口与保护规则以 [完整功能接口](remaining-features.md) 为准。
+
+V1.2 更新：周计划可选关联一个学习阶段；周事实仍按日期统计，不因阶段归属改变口径。当前导出为 `growthhub-export-v4`；阶段来源和 AI 总结见 [学习主题阶段闭环](learning-stages.md)。

@@ -71,7 +71,7 @@ class WeeklyFlow(unittest.TestCase):
   final=ok('/reviews/weekly/'+r['id']+'/confirm','POST',{'version':r['version']});self.assertEqual(final['status'],'CONFIRMED')
   self.assertEqual(len({body['id'] for code,body in results if code==200}),1)
  def test_09_export_includes_weekly_records_and_snapshot(self):
-  p=self.plan();r=self.save(self.review());export=ok('/exports');self.assertEqual(export['schemaVersion'],'growthhub-export-v3')
+  p=self.plan();r=self.save(self.review());export=ok('/exports');self.assertEqual(export['schemaVersion'],'growthhub-export-v4')
   self.assertIn(p['id'],{x['id'] for x in export['data']['weekly_plan']});row=next(x for x in export['data']['weekly_review'] if x['id']==r['id'])
   self.assertNotIn('source_hash',row);self.assertEqual(row['source_snapshot']['weekStart'],self.start);self.assertEqual(export['counts']['weekly_review'],len(export['data']['weekly_review']))
 if __name__=='__main__':unittest.main(verbosity=2)

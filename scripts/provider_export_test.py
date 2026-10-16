@@ -22,7 +22,7 @@ class ProvidersAndExport(unittest.TestCase):
  def test_export_consistency_and_secrets(self):
   with urllib.request.urlopen(BASE+'/exports') as res:
    self.assertIn('attachment',res.headers['Content-Disposition']);self.assertEqual(res.headers['Cache-Control'],'no-store');raw=res.read().decode();export=json.loads(raw)
-  self.assertEqual(export['schemaVersion'],'growthhub-export-v3')
+  self.assertEqual(export['schemaVersion'],'growthhub-export-v4')
   for table,count in export['counts'].items():self.assertEqual(count,len(export['data'][table]))
   self.assertNotIn('test-only-',raw);self.assertNotIn('request_key',raw)
   data=export['data'];tasks={t['id'] for t in data['learning_task']};logs={l['id'] for l in data['study_log']}

@@ -7,11 +7,11 @@ import java.util.*;
 public final class WeeklyContracts {
     private WeeklyContracts(){}
     public record PlanInput(@NotNull LocalDate weekStart,@NotBlank @Size(max=200) String theme,
-        @NotNull @Min(0) @Max(10080) Integer budgetMinutes,@NotNull @Size(max=10000) String notes){}
+        @NotNull @Min(0) @Max(10080) Integer budgetMinutes,@NotNull @Size(max=10000) String notes,UUID learningStageId){}
     public record PlanUpdate(@NotNull Long version,@NotBlank @Size(max=200) String theme,
-        @NotNull @Min(0) @Max(10080) Integer budgetMinutes,@NotNull @Size(max=10000) String notes,@NotNull WeeklyPlan.Status status){}
-    public record Plan(UUID id,LocalDate weekStart,String theme,int budgetMinutes,String notes,WeeklyPlan.Status status,Long version){
-        public static Plan of(WeeklyPlan p){return new Plan(p.id,p.weekStart,p.theme,p.budgetMinutes,p.notes,p.status,p.version);}
+        @NotNull @Min(0) @Max(10080) Integer budgetMinutes,@NotNull @Size(max=10000) String notes,@NotNull WeeklyPlan.Status status,UUID learningStageId){}
+    public record Plan(UUID id,LocalDate weekStart,String theme,int budgetMinutes,String notes,WeeklyPlan.Status status,Long version,UUID learningStageId){
+        public static Plan of(WeeklyPlan p){return new Plan(p.id,p.weekStart,p.theme,p.budgetMinutes,p.notes,p.status,p.version,p.learningStageId);}
     }
     public record Summary(int logCount,long actualMinutes,int scheduledTaskCount,long scheduledMinutes,
         int scheduledDoneCount,int completedDuringWeekCount,long learningMinutes,long developmentMinutes){}
