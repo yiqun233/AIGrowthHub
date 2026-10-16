@@ -32,4 +32,4 @@
 
 ## 完整初版增量
 
-成果、周归属、AI 周草稿、资讯、登录与导出 v3 的接口契约见 [剩余功能说明](remaining-features.md)，部署与安全会话见 [运行手册](deployment.md)。计划范围与外部待验收项见 [逐项核对](plan-audit.md)。
+成果、周归属、AI 周草稿、多平台资讯订阅、登录与导出 v3 的接口契约见 [剩余功能说明](remaining-features.md)，部署与安全会话见 [运行手册](deployment.md)。计划范围与外部待验收项见 [逐项核对](plan-audit.md)。

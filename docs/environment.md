@@ -82,6 +82,11 @@ Windows 访问核验：`http://127.0.0.1:5173` 返回 HTTP 200，页面包含 Gr
 
 - Spring Security 跟随 Boot BOM 增加会话/CSRF 依赖，未引入 Redis/MQ/向量库。
 - Flyway V4/V5/V6：成果、资讯/候选、AI 作业、周归属触发器、日志类型、可保存时区、AI 提示词/结构版本。
+- Flyway V7：资讯来源适配类型、订阅主页、启用状态与创建时间。
+- 2026-10-15 本机启动日志确认 Flyway V7 已成功应用到开发库 `growthhub`；本次未在 `growthhub_test` 上运行测试。
+- 资讯订阅使用 `RSSHUB_URL` 指向管理员选择的 RSSHub 实例，默认 `https://rsshub.app`；对应平台来源从该服务读取 Atom/RSS。集思录、淘股吧、同花顺、韭圈儿、有知有行通过允许列表中的平台主页抓取；CSDN 和 V2EX 使用直接 RSS。自建 RSSHub 可用 `http://rsshub:1200` 等容器内地址，须在相同容器网络下配置。
+- 仅当需要登录态抓取时，私有 `.env` 可配置 `FEED_COOKIE_ENCRYPTION_KEY`，值为 `openssl rand -base64 32` 生成的密钥；绝不提交该值。更换密钥后，已保存的订阅 Cookie 将无法解密，需要在资讯页重新保存。Cookie 通过页面单独写入 AES-GCM 加密表，不进入数据导出。
+- 本机已在私有 `.env` 生成随机 Cookie 加密密钥并保持权限 0600；未录入任何平台 Cookie。
 - 新安装仅为本机 TLS 验收工具 Caddy 2.11.7，位置 /home/yi/.local/share/growthhub/tools/caddy/2.11.7/caddy；来源 GitHub caddyserver/caddy 官方 release，以官方 SHA-512 校验：a7a433a1b133efc3c8d10eb0b99d52a24b5ef5c322dc77f5282182b1c0402139ab83f3a99f0c52409df77d20123fb0b523edad8a66d8f5e49136197bf61ef0e7。未加入全局 PATH，未注册服务。
 - TLS 测试数据/证书在项目 .runtime/caddy-smoke，权限受限，不提交。使用独立 SSL 上下文信任测试 CA，未安装系统根证书；未更改代理或防火墙。
 - 认证测试后端 18081、生产静态预览 15174、本机 TLS 18443；进程测试结束后停止。

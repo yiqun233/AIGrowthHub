@@ -49,7 +49,7 @@ docker compose --env-file infra/.env.production -f infra/compose.prod.yml ps
 docker compose --env-file infra/.env.production -f infra/compose.prod.yml logs --tail=100 backend web backup
 ```
 
-API 密钥、模型、基地址、输出模式和 token 参数通过生产私有配置注入，十类提供商均透传，见 model-providers.md。自动资讯刷新每 15 分钟运行，失败只更新来源状态。无需 Redis、消息队列或向量库。
+API 密钥、模型、基地址、输出模式和 token 参数通过生产私有配置注入，十类提供商均透传，见 model-providers.md。自动资讯刷新每 15 分钟运行，失败只更新来源状态。`RSSHUB_URL` 配置资讯服务地址，部署者可改为自建实例；部分平台需要在 RSSHub 一侧单独配置凭据或浏览器运行环境。不要将 RSSHub 管理端口公开到公网。GrowthHub 可选保存来源 Cookie，使用 `FEED_COOKIE_ENCRYPTION_KEY` 提供 AES-256-GCM 加密；密钥应由部署者保存在私有环境配置中，轮换后需重新录入 Cookie。除 RSSHub 外，GrowthHub 不增加 Redis、消息队列或向量库。
 
 示例镜像标签是已写定版本系列；Java/Maven 的基础镜像仍为维护中的系列标签，正式上线应将已构建验证的镜像固定到 digest，并记录解析值。本轮已复用现有 Docker Desktop 完成四镜像构建、隔离容器启动、HTTPS、登录和全表恢复验收，实际标识见 deployment-verification.md。两套 Compose 配置与可重复部署脚本已加入 CI；远端执行结果须实际查看。
 
